@@ -139,6 +139,34 @@ const MESSAGES = {
     isha: "🌙 Xufton (Isha)",
     namaz_reminder: "🕌 Namoz vaqti!\n{prayer_name}: {time}",
     namaz_reminder_ru: "🕌 Время намаза!\n{prayer_name}: {time}",
+    namaz_times_title: "📿 Namoz vaqtlari (bugun):",
+    namaz_times_title_ru: "📿 Времена намаза (сегодня):",
+    fajr_ru: "🌅 Фаджр (Fajr)",
+    dhuhr_ru: "☀️ Зухр (Dhuhr)",
+    asr_ru: "🌤 Аср (Asr)",
+    maghrib_ru: "🌇 Магриб (Maghrib)",
+    isha_ru: "🌙 Иша (Isha)",
+  }
+};
+
+const NAMAZ_MESSAGES = {
+  uz: {
+    namaz_times_title: "📿 Namoz vaqtlari (bugun):",
+    fajr: "🌅 Bomdod (Fajr)",
+    dhuhr: "☀️ Peshin (Dhuhr)",
+    asr: "🌤 Asr",
+    maghrib: "🌇 Shom (Maghrib)",
+    isha: "🌙 Xufton (Isha)",
+    namaz_reminder: "🕌 Namoz vaqti!\n{prayer_name}: {time}"
+  },
+  ru: {
+    namaz_times_title: "📿 Времена намаза (сегодня):",
+    fajr: "🌅 Фаджр (Fajr)",
+    dhuhr: "☀️ Зухр (Dhuhr)",
+    asr: "🌤 Аср (Asr)",
+    maghrib: "🌇 Магриб (Maghrib)",
+    isha: "🌙 Иша (Isha)",
+    namaz_reminder: "🕌 Время намаза!\n{prayer_name}: {time}"
   }
 };
 
@@ -250,8 +278,13 @@ async function saveChatSettings(chatId, settings) {
 function calculateNamazTimes(latitude, longitude, date = new Date()) {
   try {
     const coordinates = new Coordinates(latitude, longitude);
-    const params = CalculationMethod.Karachi();
+    
+    // Use Muslim World League method which is more accurate for Uzbekistan
+    const params = CalculationMethod.MuslimWorldLeague();
     params.madhab = Madhab.Hanafi;
+    
+    // Adjust Fajr angle to 18 degrees for more accurate morning prayer time
+    params.fajrAngle = 18;
     
     const prayerTimes = new PrayerTimes(coordinates, date, params);
     
