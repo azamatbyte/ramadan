@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const { generateTimeImage, cleanupTempFile } = require('./imageGenerator');
+const { PrayerTimes, Coordinates, CalculationMethod, Madhab } = require('adhan');
 
 const USERS_FILE = path.join(__dirname, 'users.json');
 const GROUPS_FILE = path.join(__dirname, 'groups.json');
@@ -127,6 +128,17 @@ const MESSAGES = {
     dua_title: "🤲 Дуолар:",
     sahar_dua: "🌅 Дуа перед сухуром:\nНавайту ан асувма совма шахри рамазона минал фажри илал магриби, холисан лиллахи тааалаа, Аллоху акбар.",
     iftar_dua: "🌙 Дуа при ифтаре:\nАллохумма лака сумту ва бика аманту ва аъалайка таваккалту ва бала ризкука афтарту, фагфирли, йа Ғоффару, ма коддамту вама аххорту.",
+    namaz_ask_location: "📍 Namaz vaqtlari uchun joylashuvni yuboring.\n\nNamuna: 41.2995, 69.2401 (Toshkent)\n\nYoki shunchaki shahar nomini yozing: Toshkent, Samarqand, Andijon",
+    namaz_ask_location_ru: "📍 Отправьте местоположение для времен намаза.\n\nПример: 41.2995, 69.2401 (Ташкент)\n\nИли просто напишите название города: Ташкент, Самарканд, Андижан",
+    namaz_times_title: "📿 Namoz vaqtlari (bugun):",
+    namaz_times_title_ru: "📿 Времена намаза (сегодня):",
+    fajr: "🌅 Bomdod (Fajr)",
+    dhuhr: "☀️ Peshin (Dhuhr)",
+    asr: "🌤 Asr",
+    maghrib: "🌇 Shom (Maghrib)",
+    isha: "🌙 Xufton (Isha)",
+    namaz_reminder: "🕌 Namoz vaqti!\n{prayer_name}: {time}",
+    namaz_reminder_ru: "🕌 Время намаза!\n{prayer_name}: {time}",
   }
 };
 
@@ -232,6 +244,111 @@ async function saveChatSettings(chatId, settings) {
     users[chatIdStr] = settings;
     await saveUsers();
   }
+}
+
+// Calculate namaz (prayer) times for given coordinates
+function calculateNamazTimes(latitude, longitude, date = new Date()) {
+  try {
+    const coordinates = new Coordinates(latitude, longitude);
+    const params = CalculationMethod.Karachi();
+    params.madhab = Madhab.Hanafi;
+    
+    const prayerTimes = new PrayerTimes(coordinates, date, params);
+    
+    return {
+      fajr: prayerTimes.fajr.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      dhuhr: prayerTimes.dhuhr.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      asr: prayerTimes.asr.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      maghrib: prayerTimes.maghrib.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      isha: prayerTimes.isha.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })
+    };
+  } catch (error) {
+    console.error('Error calculating namaz times:', error.message);
+    return null;
+  }
+}
+
+// Parse location input (coordinates or city name)
+function parseLocation(input) {
+  // Check if it's coordinates (e.g., "41.2995, 69.2401" or "41.2995 69.2401")
+  const coordPattern = /^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/;
+  const match = input.match(coordPattern);
+  
+  if (match) {
+    return {
+      latitude: parseFloat(match[1]),
+      longitude: parseFloat(match[2]),
+      name: null
+    };
+  }
+  
+  // If not coordinates, treat as city name
+  return {
+    latitude: null,
+    longitude: null,
+    name: input.trim()
+  };
+}
+
+// Get coordinates for major Uzbekistan cities
+function getCityCoordinates(cityName) {
+  const cities = {
+    'toshkent': { lat: 41.2995, lon: 69.2401, name: 'Toshkent' },
+    'tashkent': { lat: 41.2995, lon: 69.2401, name: 'Toshkent' },
+    'samarkand': { lat: 39.6542, lon: 66.9597, name: 'Samarqand' },
+    'samarqand': { lat: 39.6542, lon: 66.9597, name: 'Samarqand' },
+    'bukhara': { lat: 39.7681, lon: 64.4556, name: 'Buxoro' },
+    'buxoro': { lat: 39.7681, lon: 64.4556, name: 'Buxoro' },
+    'andijan': { lat: 40.7821, lon: 72.3442, name: 'Andijon' },
+    'andijon': { lat: 40.7821, lon: 72.3442, name: 'Andijon' },
+    'namangan': { lat: 40.9983, lon: 71.6726, name: 'Namangan' },
+    'fergana': { lat: 40.3842, lon: 71.7843, name: "Farg'ona" },
+    'fargona': { lat: 40.3842, lon: 71.7843, name: "Farg'ona" },
+    'nukus': { lat: 42.4602, lon: 59.6060, name: 'Nukus' },
+    'khiva': { lat: 41.3843, lon: 60.3633, name: 'Xiva' },
+    'xiva': { lat: 41.3843, lon: 60.3633, name: 'Xiva' },
+    'termiz': { lat: 37.2242, lon: 67.2783, name: 'Termiz' },
+    'karshi': { lat: 38.8606, lon: 65.7849, name: 'Qarshi' },
+    'qarshi': { lat: 38.8606, lon: 65.7849, name: 'Qarshi' },
+    'jizzakh': { lat: 40.1156, lon: 67.8422, name: 'Jizzax' },
+    'jizzax': { lat: 40.1156, lon: 67.8422, name: 'Jizzax' },
+    'navoi': { lat: 40.1031, lon: 65.3683, name: 'Navoiy' },
+    'navoiy': { lat: 40.1031, lon: 65.3683, name: 'Navoiy' },
+    'gulistan': { lat: 40.4897, lon: 68.7842, name: 'Guliston' },
+    'urganch': { lat: 41.5500, lon: 60.6333, name: 'Urganch' }
+  };
+  
+  const normalizedCity = cityName.toLowerCase().trim();
+  return cities[normalizedCity] || null;
+}
+
+// Format namaz times message
+function formatNamazTimes(times, lang = 'uz') {
+  const prayers = {
+    uz: {
+      fajr: MESSAGES.uz.fajr,
+      dhuhr: MESSAGES.uz.dhuhr,
+      asr: MESSAGES.uz.asr,
+      maghrib: MESSAGES.uz.maghrib,
+      isha: MESSAGES.uz.isha
+    },
+    ru: {
+      fajr: '🌅 Фаджр (Fajr)',
+      dhuhr: '☀️ Зухр (Dhuhr)',
+      asr: '🌤 Аср (Asr)',
+      maghrib: '🌇 Магриб (Maghrib)',
+      isha: '🌙 Иша (Isha)'
+    }
+  };
+  
+  const p = prayers[lang] || prayers.uz;
+  
+  return `${MESSAGES[lang].namaz_times_title || MESSAGES.uz.namaz_times_title}\n\n` +
+         `${p.fajr}: ${times.fajr}\n` +
+         `${p.dhuhr}: ${times.dhuhr}\n` +
+         `${p.asr}: ${times.asr}\n` +
+         `${p.maghrib}: ${times.maghrib}\n` +
+         `${p.isha}: ${times.isha}`;
 }
 
 // Get sahar and iftar times for a specific region
@@ -667,6 +784,151 @@ bot.onText(/\/dua/, async (msg) => {
   }
 });
 
+// Namaz command - setup location
+bot.onText(/\/namaz/, async (msg) => {
+  try {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+    
+    const settings = await getChatSettings(chatId, userId);
+    const lang = settings.lang || 'uz';
+    
+    // Store that we're waiting for location input
+    if (isGroupChat(chatId)) {
+      if (!groups[chatId]) groups[chatId] = {};
+      groups[chatId].waiting_for_namaz_location = true;
+      await saveGroups();
+    } else {
+      if (!users[userId]) users[userId] = {};
+      users[userId].waiting_for_namaz_location = true;
+      await saveUsers();
+    }
+    
+    const message = lang === 'uz' ? MESSAGES.uz.namaz_ask_location : MESSAGES.uz.namaz_ask_location_ru;
+    await bot.sendMessage(chatId, message);
+  } catch (error) {
+    console.error('Error in namaz command:', error.message);
+  }
+});
+
+// Handle namaz location input
+bot.on('message', async (msg) => {
+  try {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+    
+    // Check if we're waiting for location input
+    let waitingForLocation = false;
+    if (isGroupChat(chatId)) {
+      waitingForLocation = groups[chatId]?.waiting_for_namaz_location;
+    } else {
+      waitingForLocation = users[userId]?.waiting_for_namaz_location;
+    }
+    
+    if (!waitingForLocation || !msg.text || msg.text.startsWith('/')) return;
+    
+    const settings = await getChatSettings(chatId, userId);
+    const lang = settings.lang || 'uz';
+    
+    // Parse location input
+    const location = parseLocation(msg.text);
+    let coordinates;
+    
+    if (location.latitude && location.longitude) {
+      // Direct coordinates provided
+      coordinates = { lat: location.latitude, lon: location.longitude, name: 'Custom Location' };
+    } else {
+      // Try to find city
+      coordinates = getCityCoordinates(location.name);
+    }
+    
+    if (!coordinates) {
+      await bot.sendMessage(chatId, 
+        lang === 'uz' 
+          ? '❌ Joylashuv topilmadi. Iltimos, koordinatalar yoki shahar nomini qayta yuboring.'
+          : '❌ Местоположение не найдено. Пожалуйста, отправьте координаты или название города еще раз.'
+      );
+      return;
+    }
+    
+    // Save coordinates
+    if (isGroupChat(chatId)) {
+      groups[chatId].namaz_lat = coordinates.lat;
+      groups[chatId].namaz_lon = coordinates.lon;
+      groups[chatId].namaz_location_name = coordinates.name;
+      groups[chatId].waiting_for_namaz_location = false;
+      await saveGroups();
+    } else {
+      users[userId].namaz_lat = coordinates.lat;
+      users[userId].namaz_lon = coordinates.lon;
+      users[userId].namaz_location_name = coordinates.name;
+      users[userId].waiting_for_namaz_location = false;
+      await saveUsers();
+    }
+    
+    // Confirm and show today's times
+    const confirmMsg = lang === 'uz'
+      ? `✅ Joylashuv saqlandi: ${coordinates.name}\n\nBugungi namoz vaqtlari:`
+      : `✅ Местоположение сохранено: ${coordinates.name}\n\nВремена намаза на сегодня:`;
+    
+    await bot.sendMessage(chatId, confirmMsg);
+    
+    // Show today's namaz times
+    const times = calculateNamazTimes(coordinates.lat, coordinates.lon);
+    if (times) {
+      const timesMessage = formatNamazTimes(times, lang);
+      await bot.sendMessage(chatId, timesMessage);
+    }
+  } catch (error) {
+    console.error('Error handling namaz location:', error.message);
+  }
+});
+
+// Namaz times command - show today's prayer times
+bot.onText(/\/namaz_times/, async (msg) => {
+  try {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+    
+    const settings = await getChatSettings(chatId, userId);
+    const lang = settings.lang || 'uz';
+    
+    // Get coordinates
+    let lat, lon;
+    if (isGroupChat(chatId)) {
+      lat = groups[chatId]?.namaz_lat;
+      lon = groups[chatId]?.namaz_lon;
+    } else {
+      lat = users[userId]?.namaz_lat;
+      lon = users[userId]?.namaz_lon;
+    }
+    
+    // If no coordinates set, use default (Toshkent)
+    if (!lat || !lon) {
+      lat = 41.2995;
+      lon = 69.2401;
+      await bot.sendMessage(chatId, 
+        lang === 'uz'
+          ? '⚠️ Joylashuv o\'rnatilmagan. Standart joylashuv (Toshkent) ishlatilmoqda.\n/namaz buyrug\'i orqali joylashuvni o\'rnating.'
+          : '⚠️ Местоположение не установлено. Используется стандартное местоположение (Ташкент).\nУстановите местоположение с помощью команды /namaz.'
+      );
+    }
+    
+    // Calculate and send times
+    const times = calculateNamazTimes(lat, lon);
+    if (times) {
+      const timesMessage = formatNamazTimes(times, lang);
+      await bot.sendMessage(chatId, timesMessage);
+    } else {
+      await bot.sendMessage(chatId, 
+        lang === 'uz' ? '❌ Namoz vaqtlarini hisoblashda xatolik yuz berdi.' : '❌ Ошибка при расчете времен намаза.'
+      );
+    }
+  } catch (error) {
+    console.error('Error in namaz_times command:', error.message);
+  }
+});
+
 // Check and send reminders
 async function checkAndSendReminders() {
   try {
@@ -784,9 +1046,63 @@ async function checkAndSendReminders() {
         groups[groupId].last_iftar = today;
         await saveGroups();
       }
+      
+      // Check namaz reminders for groups
+      await checkNamazReminders(group, groupId, today, currentTime, true);
+    }
+    
+    // Process namaz reminders for users
+    for (const [userId, user] of Object.entries(users)) {
+      await checkNamazReminders(user, userId, today, currentTime, false);
     }
   } catch (error) {
     console.error('Error in reminder check:', error.message);
+  }
+}
+
+// Check and send namaz reminders
+async function checkNamazReminders(entity, entityId, today, currentTime, isGroup) {
+  try {
+    // Check if namaz coordinates are set
+    if (!entity.namaz_lat || !entity.namaz_lon) return;
+    
+    const lang = entity.lang || 'uz';
+    const times = calculateNamazTimes(entity.namaz_lat, entity.namaz_lon);
+    if (!times) return;
+    
+    const chatId = isGroup ? entity.chat_id : entityId;
+    
+    // Define prayers to check
+    const prayers = [
+      { name: 'fajr', time: times.fajr, label: lang === 'uz' ? MESSAGES.uz.fajr : '🌅 Фаджр' },
+      { name: 'dhuhr', time: times.dhuhr, label: lang === 'uz' ? MESSAGES.uz.dhuhr : '☀️ Зухр' },
+      { name: 'asr', time: times.asr, label: lang === 'uz' ? MESSAGES.uz.asr : '🌤 Аср' },
+      { name: 'maghrib', time: times.maghrib, label: lang === 'uz' ? MESSAGES.uz.maghrib : '🌇 Магриб' },
+      { name: 'isha', time: times.isha, label: lang === 'uz' ? MESSAGES.uz.isha : '🌙 Иша' }
+    ];
+    
+    // Check each prayer time
+    for (const prayer of prayers) {
+      const lastPrayerKey = `last_namaz_${prayer.name}`;
+      
+      if (currentTime === prayer.time && entity[lastPrayerKey] !== today) {
+        const message = (lang === 'uz' ? MESSAGES.uz.namaz_reminder : MESSAGES.uz.namaz_reminder_ru)
+          .replace('{prayer_name}', prayer.label)
+          .replace('{time}', prayer.time);
+        
+        await bot.sendMessage(chatId, message);
+        
+        // Update last sent
+        entity[lastPrayerKey] = today;
+        if (isGroup) {
+          await saveGroups();
+        } else {
+          await saveUsers();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error in namaz reminder check:', error.message);
   }
 }
 
