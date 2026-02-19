@@ -114,6 +114,17 @@ const MESSAGES = {
     dua_title: "🤲 Duolar:",
     sahar_dua: "🌅 Saharlik duosi:\nНавайту ан асувма совма шахри рамазона минал фажри илал магриби, холисан лиллахи тааалаа, Аллоху акбар.",
     iftar_dua: "🌙 Iftorlik duosi:\nАллохумма лака сумту ва бика аманту ва аъалайка таваккалту ва бала ризкука афтарту, фагфирли, йа Ғоффару, ма коддамту вама аххорту.",
+    namaz_ask_location: "📍 Namaz vaqtlari uchun joylashuvni yuboring.\n\nNamuna: 41.2995, 69.2401 (Toshkent)\n\nYoki shunchaki shahar nomini yozing: Toshkent, Samarqand, Andijon",
+    namaz_ask_location_ru: "📍 Отправьте местоположение для времен намаза.\n\nПример: 41.2995, 69.2401 (Ташкент)\n\nИли просто напишите название города: Ташкент, Самарканд, Андижан",
+    namaz_times_title: "📿 Namoz vaqtlari (bugun):",
+    namaz_times_title_ru: "📿 Времена намаза (сегодня):",
+    fajr: "🌅 Bomdod (Fajr)",
+    dhuhr: "☀️ Peshin (Dhuhr)",
+    asr: "🌤 Asr",
+    maghrib: "🌇 Shom (Maghrib)",
+    isha: "🌙 Xufton (Isha)",
+    namaz_reminder: "🕌 Namoz vaqti!\n{prayer_name}: {time}",
+    namaz_reminder_ru: "🕌 Время намаза!\n{prayer_name}: {time}"
   },
   ru: {
     welcome: "Ассаляму алейкум! Добро пожаловать в бот Рамадана.\nВыберите язык:",
@@ -125,27 +136,20 @@ const MESSAGES = {
     checktime_iftar: "🌙 Сейчас время поста. До ифтара осталось {hours} часов {minutes} минут.\nВремя ифтара: {time}",
     checktime_sahar: "🌅 Сейчас время ифтара или пост закончился. До следующего сухура {hours} часов {minutes} минут.\nВремя сухура: {time}",
     not_ramadan: "❌ Сегодня не Рамадан.",
-    dua_title: "🤲 Дуолар:",
+    dua_title: "🤲 Дуа:",
     sahar_dua: "🌅 Дуа перед сухуром:\nНавайту ан асувма совма шахри рамазона минал фажри илал магриби, холисан лиллахи тааалаа, Аллоху акбар.",
     iftar_dua: "🌙 Дуа при ифтаре:\nАллохумма лака сумту ва бика аманту ва аъалайка таваккалту ва бала ризкука афтарту, фагфирли, йа Ғоффару, ма коддамту вама аххорту.",
     namaz_ask_location: "📍 Namaz vaqtlari uchun joylashuvni yuboring.\n\nNamuna: 41.2995, 69.2401 (Toshkent)\n\nYoki shunchaki shahar nomini yozing: Toshkent, Samarqand, Andijon",
     namaz_ask_location_ru: "📍 Отправьте местоположение для времен намаза.\n\nПример: 41.2995, 69.2401 (Ташкент)\n\nИли просто напишите название города: Ташкент, Самарканд, Андижан",
     namaz_times_title: "📿 Namoz vaqtlari (bugun):",
     namaz_times_title_ru: "📿 Времена намаза (сегодня):",
-    fajr: "🌅 Bomdod (Fajr)",
-    dhuhr: "☀️ Peshin (Dhuhr)",
-    asr: "🌤 Asr",
-    maghrib: "🌇 Shom (Maghrib)",
-    isha: "🌙 Xufton (Isha)",
+    fajr: "🌅 Фаджр (Fajr)",
+    dhuhr: "☀️ Зухр (Dhuhr)",
+    asr: "🌤 Аср (Asr)",
+    maghrib: "🌇 Магриб (Maghrib)",
+    isha: "🌙 Иша (Isha)",
     namaz_reminder: "🕌 Namoz vaqti!\n{prayer_name}: {time}",
-    namaz_reminder_ru: "🕌 Время намаза!\n{prayer_name}: {time}",
-    namaz_times_title: "📿 Namoz vaqtlari (bugun):",
-    namaz_times_title_ru: "📿 Времена намаза (сегодня):",
-    fajr_ru: "🌅 Фаджр (Fajr)",
-    dhuhr_ru: "☀️ Зухр (Dhuhr)",
-    asr_ru: "🌤 Аср (Asr)",
-    maghrib_ru: "🌇 Магриб (Maghrib)",
-    isha_ru: "🌙 Иша (Isha)",
+    namaz_reminder_ru: "🕌 Время намаза!\n{prayer_name}: {time}"
   }
 };
 
@@ -288,12 +292,22 @@ function calculateNamazTimes(latitude, longitude, date = new Date()) {
     
     const prayerTimes = new PrayerTimes(coordinates, date, params);
     
+    // Format times in Tashkent timezone (UTC+5)
+    const formatTime = (date) => {
+      return date.toLocaleTimeString('en-GB', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Tashkent'
+      });
+    };
+    
     return {
-      fajr: prayerTimes.fajr.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-      dhuhr: prayerTimes.dhuhr.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-      asr: prayerTimes.asr.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-      maghrib: prayerTimes.maghrib.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-      isha: prayerTimes.isha.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })
+      fajr: formatTime(prayerTimes.fajr),
+      dhuhr: formatTime(prayerTimes.dhuhr),
+      asr: formatTime(prayerTimes.asr),
+      maghrib: formatTime(prayerTimes.maghrib),
+      isha: formatTime(prayerTimes.isha)
     };
   } catch (error) {
     console.error('Error calculating namaz times:', error.message);
@@ -366,17 +380,18 @@ function formatNamazTimes(times, lang = 'uz') {
       isha: MESSAGES.uz.isha
     },
     ru: {
-      fajr: '🌅 Фаджр (Fajr)',
-      dhuhr: '☀️ Зухр (Dhuhr)',
-      asr: '🌤 Аср (Asr)',
-      maghrib: '🌇 Магриб (Maghrib)',
-      isha: '🌙 Иша (Isha)'
+      fajr: MESSAGES.ru.fajr,
+      dhuhr: MESSAGES.ru.dhuhr,
+      asr: MESSAGES.ru.asr,
+      maghrib: MESSAGES.ru.maghrib,
+      isha: MESSAGES.ru.isha
     }
   };
   
   const p = prayers[lang] || prayers.uz;
+  const title = lang === 'ru' ? MESSAGES.ru.namaz_times_title : MESSAGES.uz.namaz_times_title;
   
-  return `${MESSAGES[lang].namaz_times_title || MESSAGES.uz.namaz_times_title}\n\n` +
+  return `${title}\n\n` +
          `${p.fajr}: ${times.fajr}\n` +
          `${p.dhuhr}: ${times.dhuhr}\n` +
          `${p.asr}: ${times.asr}\n` +
