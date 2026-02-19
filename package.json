@@ -1,0 +1,24 @@
+{
+  "name": "ramadan-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for Ramadan prayer times and notifications",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node --watch bot.js"
+  },
+  "keywords": [
+    "ramadan",
+    "telegram",
+    "bot",
+    "prayer-times",
+    "uzbekistan"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "canvas": "^3.2.1",
+    "dotenv": "^16.3.1",
+    "node-telegram-bot-api": "^0.63.0"
+  }
+}
