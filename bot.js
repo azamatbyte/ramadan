@@ -811,7 +811,63 @@ bot.onText(/\/namaz/, async (msg) => {
   }
 });
 
-// Handle namaz location input
+// Handle location messages (Telegram native location)
+bot.on('location', async (msg) => {
+  try {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+    
+    // Check if we're waiting for location input
+    let waitingForLocation = false;
+    if (isGroupChat(chatId)) {
+      waitingForLocation = groups[chatId]?.waiting_for_namaz_location;
+    } else {
+      waitingForLocation = users[userId]?.waiting_for_namaz_location;
+    }
+    
+    if (!waitingForLocation) return;
+    
+    const settings = await getChatSettings(chatId, userId);
+    const lang = settings.lang || 'uz';
+    
+    // Get coordinates from Telegram location
+    const latitude = msg.location.latitude;
+    const longitude = msg.location.longitude;
+    
+    // Save coordinates
+    if (isGroupChat(chatId)) {
+      groups[chatId].namaz_lat = latitude;
+      groups[chatId].namaz_lon = longitude;
+      groups[chatId].namaz_location_name = 'Current Location';
+      groups[chatId].waiting_for_namaz_location = false;
+      await saveGroups();
+    } else {
+      users[userId].namaz_lat = latitude;
+      users[userId].namaz_lon = longitude;
+      users[userId].namaz_location_name = 'Current Location';
+      users[userId].waiting_for_namaz_location = false;
+      await saveUsers();
+    }
+    
+    // Confirm and show today's times
+    const confirmMsg = lang === 'uz'
+      ? `✅ Joylashuv saqlandi: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}\n\nBugungi namoz vaqtlari:`
+      : `✅ Местоположение сохранено: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}\n\nВремена намаза на сегодня:`;
+    
+    await bot.sendMessage(chatId, confirmMsg);
+    
+    // Show today's namaz times
+    const times = calculateNamazTimes(latitude, longitude);
+    if (times) {
+      const timesMessage = formatNamazTimes(times, lang);
+      await bot.sendMessage(chatId, timesMessage);
+    }
+  } catch (error) {
+    console.error('Error handling location:', error.message);
+  }
+});
+
+// Handle namaz location input (text)
 bot.on('message', async (msg) => {
   try {
     const chatId = msg.chat.id;
